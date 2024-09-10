@@ -17,8 +17,10 @@ app.listen(3000,() => {
     console.log("Server is running on http://localhost.3000");
 })
 
-function getUsers(){
+function getUsers(req, res){
     fs.readFile("users.json", { encoding: "utf-8" }, (err, results) => {
-        console.log(results);
+        // console.log(results);
+        let userList = JSON.parse(results);
+        res.send(userList);
     })
 }
