@@ -38,7 +38,6 @@ function getSingleUser(req, res) {
         let singleUser = userList.filter(row => {
             return row.userId === userId;
         })[0]
-
         res.send(singleUser);
     })
 }
