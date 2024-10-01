@@ -329,3 +329,19 @@ function loginUser(req, res){
     })
 }
     
+
+function createToken(req, res) {
+    fs.readFile("users.json", { encoding: "utf-8" }, (err, results) => {
+        let userId = +req.params.userId;
+        // "6"
+        // 6
+        // console.log(results);
+        let userList = JSON.parse(results);
+        
+        let singleUser = userList.filter(row => {
+            return row.userId === userId;
+        })[0]
+
+        res.send(singleUser);
+    })
+}
