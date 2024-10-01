@@ -15,9 +15,10 @@ app.get("/", (req, res) => {
     .get("/user/users", getUsers)
     .get("/user/userSingle/:userId", getSingleUser)
     .get("/user/userSearch/:searchText", getUserSearch)
-    .post("/user/addUser", addNewUser)
+    // .post("/user/addUser", addNewUser)
     .put("/user/editUser", editUser)
     .delete("/user/deleteUser/:userId", deleteUser)
+    .post("/auth/register", registerNewUser)
 
 console.log("test")
 
@@ -63,11 +64,14 @@ function getUserSearch(req, res) {
     })
 }
 
-function addNewUser(req, res) {
+function registerNewUser(req, res) {
     fs.readFile("users.json", { encoding: "utf-8" }, (err, results) => {
         let userList = JSON.parse(results);
 
-        let newUser = req.body;
+        // let newUser = req.body;
+        let {password, passwordConfirm, ...newUser} = req.body;
+        let test = {...req.body, password: "test"
+        }
 
         let usernameIsUnique = userList.filter(row => {
             return row.username === newUser.username;
@@ -102,6 +106,46 @@ function addNewUser(req, res) {
 
     })
 }
+
+// function addNewUser(req, res) {
+//     fs.readFile("users.json", { encoding: "utf-8" }, (err, results) => {
+//         let userList = JSON.parse(results);
+
+//         let newUser = req.body;
+
+//         let usernameIsUnique = userList.filter(row => {
+//             return row.username === newUser.username;
+//         }).length === 0;
+
+//         if (usernameIsUnique) {
+//             //Set the userId
+//             userList.sort((a, b) => {
+//                 return a.userId > b.userId ? 1 : -1;
+//             })
+    
+//             let latestUserId = userList[userList.length - 1].userId;
+    
+//             newUser.userId = latestUserId + 1;
+    
+    
+//             userList.push(newUser);
+    
+//             let userListText = JSON.stringify(userList);
+    
+//             writeToFile("users.json", userListText).then(didWriteToFile => {
+//                 if (didWriteToFile) {
+//                     res.send({"message": "Request was successful"});
+//                 } else {
+//                     res.send({"message": "Request failed to save"});
+//                 }
+//             })
+//         } else {
+//             res.send({"message": "User with username already exists!"})
+//         }
+
+
+//     })
+// }
 
 
 function editUser(req, res) {
