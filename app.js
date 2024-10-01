@@ -84,7 +84,16 @@ function registerNewUser(req, res) {
                 passwordHash: passwordHash,
                 passwordSalt: salt,
             }
-            res.send({newUser, authObject});
+            Promise.all([
+                addUserToFile(userList, newUser),
+                addAuthObjectToFile(authObject)
+                ]).then(fileWriteResponse =>{
+                    if (fileWriteResponse[0] && fileWriteResponse[1]) {
+                        res.send(fileWriteResponse[0]);
+                    } else {
+                        res.send({"message": "Request failed to save"});
+                    }
+                })
             })
             // addUserToFile(userList, newUser);
         } else {
@@ -95,6 +104,27 @@ function registerNewUser(req, res) {
         }
     }
 
+    })
+}
+
+function addAuthObjectToFile(newAuthObject){
+    return new Promise(resolve => {
+
+    fs.readFile("auth.json", { encoding: "utf-8" }, (err, results) => {
+        let authList = JSON.parse(results);
+        authList.push(newAuthObject);
+        
+
+        let authListText = JSON.stringify(authList);
+    
+        writeToFile("auth.json", authListText).then(didWriteToFile => {
+            if (didWriteToFile) {
+                resolve(newAuthObject);
+            } else {
+                resolve(false);
+                }
+            })
+        })
     })
 }
 
@@ -113,14 +143,14 @@ function addUserToFile (userList, newUser){
     userList.push(newUser);
 
     let userListText = JSON.stringify(userList);
-        //     writeToFile("users.json", userListText).then(didWriteToFile => {
-    //         if (didWriteToFile) {
-        res.send({"message": "Request was successful"});
-        resolve(newUser)
-        //         } else {
-        //             resolve(false);
-        //         }
-        //     })
+    
+    writeToFile("users.json", userListText).then(didWriteToFile => {
+        if (didWriteToFile) {
+            resolve(newUser)
+        } else {
+            resolve(false);
+                }
+            })
 
     })
 }

@@ -8989,5 +8989,14 @@
         "gender": "Male",
         "favoriteColor": "Purple",
         "favoriteAnimal": "Monkey"
+    },
+    {
+        "username": "testUser3",
+        "fullName": "Test User",
+        "city": "Test",
+        "gender": "Male",
+        "favoriteColor": "Blue",
+        "favoriteAnimal": "Unicorn",
+        "userId": 1002
     }
 ]
