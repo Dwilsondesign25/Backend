@@ -2,6 +2,9 @@ import express from "express";
 import fs from "fs";
 import cors from "cors";
 import crypto from "crypto";
+import jwt from "jsonwebtoken";
+
+const tokenKey = "tokenkey";
 // const express = require("express");
 
 const app = express();
@@ -318,7 +321,9 @@ function loginUser(req, res){
             let authObject = relatedAuthObject[0];
             getHash(password, authObject.passwordSalt).then((hashResponse) => {
                 if (hashResponse === authObject.passwordHash) {
-                res.send({"message":"Login successful!"})
+                createToken(username).then(tokenResponse =>{
+                res.send({"token":tokenResponse});
+                })
             } else {
                 res.status(401).send({"message":"Password is incorrect!"});
             }
@@ -328,20 +333,32 @@ function loginUser(req, res){
     }
     })
 }
-    
 
-function createToken(req, res) {
-    fs.readFile("users.json", { encoding: "utf-8" }, (err, results) => {
-        let userId = +req.params.userId;
-        // "6"
-        // 6
-        // console.log(results);
-        let userList = JSON.parse(results);
-        
-        let singleUser = userList.filter(row => {
-            return row.userId === userId;
-        })[0]
 
-        res.send(singleUser);
+
+function createToken(username) {
+    return new Promise(resolve =>{
+        fs.readFile("users.json", { encoding: "utf-8" }, (err, results) => {
+            let userList = JSON.parse(results);
+            
+            let singleUser = userList.filter(row => {
+                return row.username.toLowerCase() === username.toLowerCase();
+            })[0]
+
+            let token = jwt.sign(
+                {
+                    username: singleUser.username,
+                    userId: singleUser.userId,
+                    fullName: singleUser.fullName,
+                    favoriteColor: singleUser.favoriteColor,
+                    versionNumber: 1,
+                },
+                tokenKey,{
+                    expiresIn: '24h', // expires in 24 hour
+                }
+            );
+
+            resolve(token);
+        })
     })
 }
