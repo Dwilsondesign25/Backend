@@ -70,14 +70,16 @@ function registerNewUser(req, res) {
 
         // let newUser = req.body;
         let {password, passwordConfirm, ...newUser} = req.body;
-        let test = {...req.body, password: "test"
-        }
+        // let test = {...req.body, password: "test"
+        // }
+    
+        // res.send(newUser);
 
         let usernameIsUnique = userList.filter(row => {
             return row.username === newUser.username;
         }).length === 0;
 
-        if (usernameIsUnique) {
+        if (usernameIsUnique && password === passwordConfirm) {
             //Set the userId
             userList.sort((a, b) => {
                 return a.userId > b.userId ? 1 : -1;
@@ -92,17 +94,20 @@ function registerNewUser(req, res) {
     
             let userListText = JSON.stringify(userList);
     
-            writeToFile("users.json", userListText).then(didWriteToFile => {
-                if (didWriteToFile) {
+        //     writeToFile("users.json", userListText).then(didWriteToFile => {
+        //         if (didWriteToFile) {
                     res.send({"message": "Request was successful"});
-                } else {
-                    res.send({"message": "Request failed to save"});
-                }
-            })
+        //         } else {
+        //             res.send({"message": "Request failed to save"});
+        //         }
+        //     })
         } else {
+            if (password !== passwordConfirm) {
+                res.send({"message": "Passwords do not match!"})
+            } else { // !usernameIsUnique
             res.send({"message": "User with username already exists!"})
         }
-
+    }
 
     })
 }
