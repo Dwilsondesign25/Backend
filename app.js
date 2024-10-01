@@ -1,6 +1,7 @@
 import express from "express";
 import fs from "fs";
 import cors from "cors";
+import crypto from "crypto";
 // const express = require("express");
 
 const app = express();
@@ -70,37 +71,22 @@ function registerNewUser(req, res) {
 
         // let newUser = req.body;
         let {password, passwordConfirm, ...newUser} = req.body;
-        // let test = {...req.body, password: "test"
-        // }
-    
-        // res.send(newUser);
 
         let usernameIsUnique = userList.filter(row => {
             return row.username === newUser.username;
         }).length === 0;
 
         if (usernameIsUnique && password === passwordConfirm) {
-            //Set the userId
-            userList.sort((a, b) => {
-                return a.userId > b.userId ? 1 : -1;
+            let salt = crypto.randomBytes(8).toString("hex");
+            getHash(password,salt).then(passwordHash => {
+            let authObject  = {
+                username: newUser.username,
+                passwordHash: passwordHash,
+                passwordSalt: salt,
+            }
+            res.send({newUser, authObject});
             })
-    
-            let latestUserId = userList[userList.length - 1].userId;
-    
-            newUser.userId = latestUserId + 1;
-    
-    
-            userList.push(newUser);
-    
-            let userListText = JSON.stringify(userList);
-    
-        //     writeToFile("users.json", userListText).then(didWriteToFile => {
-        //         if (didWriteToFile) {
-                    res.send({"message": "Request was successful"});
-        //         } else {
-        //             res.send({"message": "Request failed to save"});
-        //         }
-        //     })
+            // addUserToFile(userList, newUser);
         } else {
             if (password !== passwordConfirm) {
                 res.send({"message": "Passwords do not match!"})
@@ -110,6 +96,54 @@ function registerNewUser(req, res) {
     }
 
     })
+}
+
+function addUserToFile (userList, newUser){
+    return new Promise(resolve => {
+    //set the userId
+    userList.sort((a, b) => {
+        return a.userId > b.userId ? 1 : -1;
+    })
+
+    let latestUserId = userList[userList.length - 1].userId;
+
+    newUser.userId = latestUserId + 1;
+
+
+    userList.push(newUser);
+
+    let userListText = JSON.stringify(userList);
+        //     writeToFile("users.json", userListText).then(didWriteToFile => {
+    //         if (didWriteToFile) {
+        res.send({"message": "Request was successful"});
+        resolve(newUser)
+        //         } else {
+        //             resolve(false);
+        //         }
+        //     })
+
+    })
+}
+function getHash(password, salt) {
+    return new Promise(resolve => {
+        let KeyLength = 20;
+        let iterations = 600000;
+        crypto.pbkdf2(
+            password,
+            salt,
+            iterations,
+            KeyLength, 
+            "sha-512",
+            (err, derivedKey) => {
+                if (err){
+                    console.log(err);
+                    resolve(err);
+                } else {
+                    let hash = derivedKey.toString("hex");
+                    resolve(hash);
+                }
+            })
+    }) 
 }
 
 // function addNewUser(req, res) {
