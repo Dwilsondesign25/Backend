@@ -20,6 +20,7 @@ app.get("/", (req, res) => {
     .put("/user/editUser", editUser)
     .delete("/user/deleteUser/:userId", deleteUser)
     .post("/auth/register", registerNewUser)
+    .post("/auth/login", loginUser)
 
 console.log("test")
 
@@ -73,7 +74,7 @@ function registerNewUser(req, res) {
         let {password, passwordConfirm, ...newUser} = req.body;
 
         let usernameIsUnique = userList.filter(row => {
-            return row.username === newUser.username;
+            return row.username.toLowerCase() === newUser.username.toLowerCase();
         }).length === 0;
 
         if (usernameIsUnique && password === passwordConfirm) {
@@ -163,7 +164,7 @@ function getHash(password, salt) {
             salt,
             iterations,
             KeyLength, 
-            "sha-512",
+            "sha512",
             (err, derivedKey) => {
                 if (err){
                     console.log(err);
@@ -183,7 +184,7 @@ function getHash(password, salt) {
 //         let newUser = req.body;
 
 //         let usernameIsUnique = userList.filter(row => {
-//             return row.username === newUser.username;
+//             return row.username.toLowerCase() === newUser.username.toLowerCase();
 //         }).length === 0;
 
 //         if (usernameIsUnique) {
@@ -226,7 +227,8 @@ function editUser(req, res) {
         let userId = userForEdit.userId
 
         let usernameIsUnique = userList.filter(row => {
-            return row.username === userForEdit.username && row.userId !== userId;
+            return row.username.toLowerCase() === userForEdit.username.toLowerCase()
+            && row.userId !== userId;
         }).length === 0;
 
         if (usernameIsUnique) {
@@ -303,3 +305,27 @@ function writeToFile(fileName, fileText) {
         })
     })
 }
+
+function loginUser(req, res){
+    fs.readFile("auth.json", { encoding: "utf-8" }, (err, results) => {
+        let authList = JSON.parse(results);
+        let {username, password} = req.body;
+        // let password = req.body.password
+        let relatedAuthObject = authList.filter(row =>{
+            return row.username.toLowerCase() === username.toLowerCase();
+        });
+        if (relatedAuthObject.length > 0){
+            let authObject = relatedAuthObject[0];
+            getHash(password, authObject.passwordSalt).then((hashResponse) => {
+                if (hashResponse === authObject.passwordHash) {
+                res.send({"message":"Login successful!"})
+            } else {
+                res.status(401).send({"message":"Password is incorrect!"});
+            }
+        })
+    } else {
+        res.status(401).send({"message":"Username does not exist!"});
+    }
+    })
+}
+    
