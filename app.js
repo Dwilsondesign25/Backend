@@ -118,7 +118,7 @@ function registerNewUser(req, res) {
             if (password !== passwordConfirm) {
                 res.send({ "message": "Your password and password confirm do not match!" })
             } else { // !usernameIsUnique
-                res.send({ "message": "User with username already exists!" })
+                res.status(500).send({ "message": "User with username already exists!" })
             }
         }
 
