@@ -28,12 +28,33 @@ app.get("/", (req, res) => {
     // .post("/user/addUser", addNewUser)
     .put("/user/editUser", editUser)
     .delete("/user/deleteUser/:userId", deleteUser)
+    .get("/post/posts/:filterList/", getPosts)
+    .get("/post/posts/:filterList/userId", getPosts)
 
 console.log("test")
 
 app.listen(3000, () => {
     console.log("Listening at: http://localhost:3000")
 })
+
+function getPosts(req, res) {
+    fs.readFile("posts.json", { encoding: "utf-8" }, (err, results) => {
+        let userId = +req.user.userId;
+        if (req.params?.userId) {
+            userId = +req.params.userId;
+        }
+        let filterList = req.params.userId;
+ 
+        let postList = JSON.parse(results);
+        if(filterList){
+        postList = postList.filter(row => {
+            return row.userId === userId;
+        })
+    }
+
+        res.send(postList);
+    })
+}
 
 function refreshToken(req, res) {
     let username = req.user.username;
