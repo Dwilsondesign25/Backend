@@ -43,7 +43,7 @@ function getPosts(req, res) {
         if (req.params?.userId) {
             userId = +req.params.userId;
         }
-        let filterList = req.params.userId;
+        let filterList = req.params.filterList === "true";
  
         let postList = JSON.parse(results);
         if(filterList){
