@@ -1,5 +1,5 @@
 import express from "express";
-import fs, { write } from "fs";
+import fs from "fs";
 import cors from "cors";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
@@ -28,40 +28,84 @@ app.get("/", (req, res) => {
     // .post("/user/addUser", addNewUser)
     .put("/user/editUser", editUser)
     .delete("/user/deleteUser/:userId", deleteUser)
-    .get("/post/posts/:filterList/", getPosts)
-    .get("/post/posts/:filterList/userId", getPosts)
+    .get("/post/posts/:filterList", getPosts)
+    .get("/post/posts/:filterList/:userId", getPosts)
+    .post("/post/upsertPost", upsertPost)
+    .delete("/post/deletePost/:postId", deletePost)
 
 console.log("test")
 
 app.listen(3000, () => {
     console.log("Listening at: http://localhost:3000")
 })
-function addPosts (req, res) {
-    fs.readFile("posts.json", { encoding: "utf-8" }, (err, results) => {
-        let newPost = req.body; 
-        newPost.userId = +req.user.userId;
- 
-        let postList = JSON.parse(results);
 
-        postList.sort((a, b) => {
-            return a.postId > b.postId ? 1 : -1;
+function deletePost(req, res) {
+    fs.readFile("posts.json", { encoding: "utf-8" }, (err, results) => {
+        let postList = JSON.parse(results);
+        let postId = +req.params.postId;
+
+        let postForDelete = postList.filter(row => {
+            return row.postId === postId;
+        })[0];
+
+        if (postForDelete.userId !== +req.user.userId) {
+            return res.status(401).send({ "message": "You can only delete your own posts!" })
+        }
+
+        postList = postList.filter(row => {
+            return row.postId !== postId;
         })
 
-        let latestPostId = postList[postList.length - 1].postId;
-
-        newPost.postId = latestPostId + 1;
-
-        newPost.postDate = new Date();
-
-        newPost.updateDate = new Date();
-
-        postList.push(newPost);
-
         writeToFile("posts.json", JSON.stringify(postList)).then(() => {
-            res.send(newPost);
+            res.send({"message": "Post deleted successfully!"});
         })
     })
 }
+
+function upsertPost(req, res) {
+    fs.readFile("posts.json", { encoding: "utf-8" }, (err, results) => {
+        let postForUpsert = req.body;
+        postForUpsert.userId = +req.user.userId;
+
+        let postList = JSON.parse(results);
+
+        if (postForUpsert.postId) {
+            let postBeforeUpsert = postList.filter(row => {
+                return row.postId === postForUpsert.postId;
+            })[0];
+
+            if (postBeforeUpsert.userId !== +req.user.userId) {
+                return res.status(401).send({ "message": "You can only edit your own posts!" })
+            }
+
+            postForUpsert.postDate = postBeforeUpsert.postDate;
+
+            postList = postList.filter(row => {
+                return row.postId !== postForUpsert.postId;
+            })
+        } else {
+            postList.sort((a, b) => {
+                return a.postId > b.postId ? 1 : -1;
+            })
+
+            let latestPostId = postList[postList.length - 1].postId;
+
+            postForUpsert.postId = latestPostId + 1;
+
+            postForUpsert.postDate = new Date();
+        }
+
+
+        postForUpsert.updateDate = new Date();
+
+        postList.push(postForUpsert);
+
+        writeToFile("posts.json", JSON.stringify(postList)).then(() => {
+            res.send(postForUpsert);
+        })
+    })
+}
+
 function getPosts(req, res) {
     fs.readFile("posts.json", { encoding: "utf-8" }, (err, results) => {
         let userId = +req.user.userId;
@@ -69,13 +113,14 @@ function getPosts(req, res) {
             userId = +req.params.userId;
         }
         let filterList = req.params.filterList === "true";
- 
+
         let postList = JSON.parse(results);
-        if(filterList){
-        postList = postList.filter(row => {
-            return row.userId === userId;
-        })
-    }
+
+        if (filterList) {
+            postList = postList.filter(row => {
+                return row.userId === userId;
+            })
+        }
 
         res.send(postList);
     })
@@ -83,7 +128,7 @@ function getPosts(req, res) {
 
 function refreshToken(req, res) {
     let username = req.user.username;
-    createToken(username).then(tokenResponse =>{
+    createToken(username).then(tokenResponse => {
         res.send({ "token": tokenResponse });
     })
 }
@@ -155,14 +200,14 @@ function registerNewUser(req, res) {
                     if (fileWriteResponse[0] && fileWriteResponse[1]) {
                         res.send(fileWriteResponse[0]);
                     } else {
-                        res.send({ "message": "Failed to save registration to file!" })
+                        res.status(500).send({ "message": "Failed to save registration to file!" })
                     }
                 })
             })
             // addUserToFile(userList, newUser);
         } else {
             if (password !== passwordConfirm) {
-                res.send({ "message": "Your password and password confirm do not match!" })
+                res.status(500).send({ "message": "Your password and password confirm do not match!" })
             } else { // !usernameIsUnique
                 res.status(500).send({ "message": "User with username already exists!" })
             }
@@ -281,7 +326,7 @@ function getHash(password, salt) {
 // }
 
 function updateAuthForUser(username, newUsername = "") {
-    return new Promise(resolve =>{
+    return new Promise(resolve => {
         fs.readFile("auth.json", { encoding: "utf-8" }, (err, results) => {
             let authList = JSON.parse(results);
             let authListEdited = authList.filter(row => {
@@ -310,30 +355,30 @@ function editUser(req, res) {
     if (userForEdit.userId === req.user.userId) {
         fs.readFile("users.json", { encoding: "utf-8" }, (err, results) => {
             let userList = JSON.parse(results);
-    
-    
+
+
             let userId = userForEdit.userId
-    
+
             let usernameIsUnique = userList.filter(row => {
                 return row.username.toLowerCase() === userForEdit.username.toLowerCase()
                     && row.userId !== userId;
             }).length === 0;
-    
+
             if (usernameIsUnique) {
                 let userListEdited = userList.filter((row) => {
                     return row.userId !== userId;
                 })
-    
+
                 userListEdited.push(userForEdit);
-    
+
                 //Sort before we save
                 userListEdited.sort((a, b) => {
                     return a.userId > b.userId ? 1 : -1;
                 })
-    
+
                 let userListText = JSON.stringify(userListEdited);
 
-                
+
                 let usernameBeforeEdit = userList.filter(row => {
                     return row.userId === userId;
                 })[0].username;
@@ -341,16 +386,16 @@ function editUser(req, res) {
                 let fileWritePromises = [
                     writeToFile("users.json", userListText)
                 ]
-                
-                if(usernameBeforeEdit !== userForEdit.username) {
+
+                if (usernameBeforeEdit !== userForEdit.username) {
                     fileWritePromises.push(
                         updateAuthForUser(usernameBeforeEdit, userForEdit.username)
                     );
                 }
-    
+
                 Promise.all(fileWritePromises).then(didWriteToFile => {
                     if (
-                        didWriteToFile[0] && 
+                        didWriteToFile[0] &&
                         (didWriteToFile.length === 1 || didWriteToFile[1])
                     ) {
                         res.send({ "message": "Request was successful" });
@@ -361,11 +406,11 @@ function editUser(req, res) {
             } else {
                 res.send({ "message": "User with username already exists!" })
             }
-    
-    
+
+
         })
     } else {
-        res.status(401).send({"message": "Unauthorized: You can only edit your own user!"})
+        res.status(401).send({ "message": "Unauthorized: You can only edit your own user!" })
     }
 }
 
@@ -375,9 +420,9 @@ function deleteUser(req, res) {
     if (userId === req.user.userId) {
         fs.readFile("users.json", { encoding: "utf-8" }, (err, results) => {
             let userList = JSON.parse(results);
-    
+
             // console.log("Request User Id: " + userId);
-    
+
             let userListAfterDelete = userList.filter((row) => {
                 // if (row.userId === 5) {
                 //     console.log("Explicitly Equal: " + (row.userId === userId))
@@ -386,15 +431,15 @@ function deleteUser(req, res) {
                 return row.userId !== userId;
             })
 
-            
+
             // console.log("Length of original list: " + userList.length);
             // console.log("Length of filtered list: " + userListAfterDelete.length);
-    
+
             let userListText = JSON.stringify(userListAfterDelete);
             let usernameBeforeDelete = userList.filter(row => {
                 return row.userId === userId;
             })[0].username;
-    
+
             Promise.all([
                 writeToFile("users.json", userListText),
                 updateAuthForUser(usernameBeforeDelete)
@@ -405,10 +450,10 @@ function deleteUser(req, res) {
                     res.send({ "message": "Request failed to save" });
                 }
             })
-    
+
         })
     } else {
-        res.status(401).send({"message": "Unauthorized: You can only delete your own user!"})
+        res.status(401).send({ "message": "Unauthorized: You can only delete your own user!" })
     }
 }
 
@@ -488,14 +533,14 @@ function checkToken(req, res, next) {
         next();
     } else {
         if (
-            req.headers.authorization 
+            req.headers.authorization
             && req.headers.authorization.toLowerCase().includes("bearer ")
-        ){
+        ) {
             let token = req.headers.authorization.split(" ")[1];
-            jwt.verify(token, tokenKey, (err, claims) =>{
+            jwt.verify(token, tokenKey, (err, claims) => {
                 if (err) {
                     res.status(401).send(
-                        {"message": "Unauthorized: The token supplied is not valid!"}
+                        { "message": "Unauthorized: The token supplied is not valid!" }
                     );
                 } else {
                     // console.log(claims);
@@ -506,7 +551,7 @@ function checkToken(req, res, next) {
             })
         } else {
             res.status(401).send(
-                {"message": "Unauthorized: You need a token to access this endpoint!"}
+                { "message": "Unauthorized: You need a token to access this endpoint!" }
             );
         }
     }
