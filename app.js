@@ -1,5 +1,5 @@
 import express from "express";
-import fs from "fs";
+import fs, { write } from "fs";
 import cors from "cors";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
@@ -36,7 +36,32 @@ console.log("test")
 app.listen(3000, () => {
     console.log("Listening at: http://localhost:3000")
 })
+function addPosts (req, res) {
+    fs.readFile("posts.json", { encoding: "utf-8" }, (err, results) => {
+        let newPost = req.body; 
+        newPost.userId = +req.user.userId;
+ 
+        let postList = JSON.parse(results);
 
+        postList.sort((a, b) => {
+            return a.postId > b.postId ? 1 : -1;
+        })
+
+        let latestPostId = postList[postList.length - 1].postId;
+
+        newPost.postId = latestPostId + 1;
+
+        newPost.postDate = new Date();
+
+        newPost.updateDate = new Date();
+
+        postList.push(newPost);
+
+        writeToFile("posts.json", JSON.stringify(postList)).then(() => {
+            res.send(newPost);
+        })
+    })
+}
 function getPosts(req, res) {
     fs.readFile("posts.json", { encoding: "utf-8" }, (err, results) => {
         let userId = +req.user.userId;
